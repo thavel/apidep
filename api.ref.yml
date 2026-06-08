@@ -1,0 +1,6 @@
+version: 1
+refs:
+  - path: samples/sample.proto
+    type: grpc
+  - path: samples/sample.yml
+    type: openapi

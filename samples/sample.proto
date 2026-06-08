@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package apidep.sample;
+
+message Sample {
+    string title = 1;
+}
+
+message SampleRequest {}
+
+service SampleService {
+    rpc GetSample (SampleRequest) returns (Sample) {}
+}

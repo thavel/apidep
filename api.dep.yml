@@ -1,0 +1,18 @@
+version: 1
+output: ./apidep/
+deps:
+  # git
+  - source: git@github.com:teamdigitale/api-openapi-samples.git
+    output: ./apidep/openapi/
+    refs:
+      - path: openapi-v3/api-example.yaml
+        type: openapi
+  - source: https://github.com/mapbox/geobuf.git
+    version: v1.0.1
+    refs:
+      - path: geobuf.proto
+        output: ./apidep/grpc/geobuf.proto
+        type: grpc
+  # local
+  - source: ./
+    ref: api.ref.yml
