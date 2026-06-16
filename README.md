@@ -110,13 +110,7 @@ Validates the refs declared in `api.ref.yml`. Each file is validated against its
 
 ### `ci`
 
-Intended for use in CI pipelines. For each dependency, performs these checks in order and stops at the first failure:
-
-1. **File present** — verifies that the local file exists.
-2. **Content match** — fetches the remote file and compares it byte-for-byte with the local copy.
-3. **Format valid** — validates the file against its declared or inferred type (unless `--no-validate` is set).
-4. **Lock hash** — recomputes the content hash and compares it against `api.lock.yml`.
-5. **Commit match** — for Git sources, checks that the locked commit matches the resolved HEAD (or pinned version).
+Intended for use in CI pipelines. For each dependency, ensures that the file exists, the format is valid, and the lock is up-to-date.
 
 
 ## Typical workflow
