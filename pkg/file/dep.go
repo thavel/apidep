@@ -49,6 +49,7 @@ type Provider interface {
 type Source interface {
 	Fetch(filePath string) ([]byte, error)
 	Commit() string
+	Glob(pattern string) ([]string, error)
 }
 
 func ReadDep(filePath string) (*ApiDep, error) {
@@ -92,9 +93,15 @@ func Output(filePath, root, dep, ref, def string) string {
 		if strings.HasSuffix(ref, `/`) || strings.HasSuffix(ref, `\`) {
 			return path.Join(path.Dir(ref), fileName)
 		}
+		if strings.HasSuffix(ref, `/.`) || strings.HasSuffix(ref, `\.`) {
+			return path.Join(path.Dir(ref), filePath)
+		}
 		// Not necessary, it's just to make sure the path is properly formatted
 		return path.Join(path.Dir(ref), filepath.Base(ref))
 	case len(dep) > 0:
+		if strings.HasSuffix(dep, `/.`) || strings.HasSuffix(dep, `\.`) {
+			return path.Join(path.Dir(dep), filePath)
+		}
 		return path.Join(path.Dir(dep), fileName)
 	case len(root) > 0:
 		return path.Join(path.Dir(root), fileName)

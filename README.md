@@ -63,6 +63,10 @@ deps:
       - path: openapi-v3/api-example.yaml
         output: ./apidep/openapi/api-example.yaml  # optional
         type: openapi
+      # you can also use '*'
+      - path: openapi-v3/*.yaml
+        output: ./apidep/openapi/  # optional
+        type: openapi
   # Local path (for dev and mono-repo)
   - source: ./
     ref: api.ref.yml

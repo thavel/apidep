@@ -81,26 +81,32 @@ func checkDep(rd ResolvedDep, rootOutput string, lock *file.ApiLock, noValidate 
 
 	remoteContents := make(map[string][]byte, len(dep.Refs))
 	for _, ref := range dep.Refs {
-		remoteContent, err := source.Fetch(ref.Path)
+		filenames, err := ref.Inputs(source)
 		if err != nil {
-			return fmt.Errorf("error fetching %s: %w", ref.Path, err)
+			return err
 		}
-		remoteContents[ref.Path] = remoteContent
+		for _, filename := range filenames {
+			remoteContent, err := source.Fetch(filename)
+			if err != nil {
+				return fmt.Errorf("error fetching %s: %w", filename, err)
+			}
+			remoteContents[filename] = remoteContent
 
-		dest := file.Output(ref.Path, rootOutput, dep.Output, ref.Output, defaultOutput)
+			dest := file.Output(filename, rootOutput, dep.Output, ref.Output, defaultOutput)
 
-		localContent, err := os.ReadFile(dest)
-		if err != nil {
-			return fmt.Errorf("%s: missing", dest)
-		}
+			localContent, err := os.ReadFile(dest)
+			if err != nil {
+				return fmt.Errorf("%s: missing", dest)
+			}
 
-		if !bytes.Equal(localContent, remoteContent) {
-			return fmt.Errorf("%s: content differs from remote", dest)
-		}
+			if !bytes.Equal(localContent, remoteContent) {
+				return fmt.Errorf("%s: content differs from remote", dest)
+			}
 
-		if !noValidate {
-			if err := file.Validate(dest, ref.Type); err != nil {
-				return fmt.Errorf("%s: invalid: %w", dest, err)
+			if !noValidate {
+				if err := file.Validate(dest, ref.Type); err != nil {
+					return fmt.Errorf("%s: invalid: %w", dest, err)
+				}
 			}
 		}
 	}

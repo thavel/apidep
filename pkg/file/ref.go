@@ -46,6 +46,13 @@ func ReadRef(filePath string) (*ApiRef, error) {
 	return ParseRef(filePath, data)
 }
 
+func (r Ref) Inputs(src Source) ([]string, error) {
+	if src == nil {
+		return []string{r.Path}, nil
+	}
+	return src.Glob(r.Path)
+}
+
 func ParseRef(filePath string, content []byte) (*ApiRef, error) {
 	var refs ApiRef
 	if err := yaml.Unmarshal([]byte(content), &refs); err != nil {

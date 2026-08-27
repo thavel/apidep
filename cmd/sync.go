@@ -131,29 +131,36 @@ func syncDep(rd ResolvedDep, root string, noValidate bool) (*file.DepLock, error
 
 	contents := make(map[string][]byte, len(dep.Refs))
 	for _, ref := range dep.Refs {
-		content, err := source.Fetch(ref.Path)
+		filenames, err := ref.Inputs(source)
 		if err != nil {
-			return nil, fmt.Errorf("error fetching %s: %w", ref.Path, err)
+			return nil, err
 		}
-		dest := file.Output(ref.Path, root, dep.Output, ref.Output, defaultOutput)
-		status, err := file.WriteDep(&mux, dest, content)
-		if err != nil {
-			return nil, fmt.Errorf("error writing output: %w", err)
-		}
-		if status != file.FileUnchanged && !noValidate {
-			if err := file.Validate(dest, ref.Type); err != nil {
-				slog.Warn("validating", "path", dest, "err", err)
+
+		for _, filename := range filenames {
+			content, err := source.Fetch(filename)
+			if err != nil {
+				return nil, fmt.Errorf("error fetching %s: %w", filename, err)
 			}
+			dest := file.Output(filename, root, dep.Output, ref.Output, defaultOutput)
+			status, err := file.WriteDep(&mux, dest, content)
+			if err != nil {
+				return nil, fmt.Errorf("error writing output: %w", err)
+			}
+			if status != file.FileUnchanged && !noValidate {
+				if err := file.Validate(dest, ref.Type); err != nil {
+					slog.Warn("validating", "path", dest, "err", err)
+				}
+			}
+			switch status {
+			case file.FileNew:
+				slog.Info("new", "file", dest)
+			case file.FileUnchanged:
+				slog.Info("unchanged", "file", dest)
+			case file.FileUpdated:
+				slog.Info("updated", "file", dest)
+			}
+			contents[filename] = content
 		}
-		switch status {
-		case file.FileNew:
-			slog.Info("new", "file", dest)
-		case file.FileUnchanged:
-			slog.Info("unchanged", "file", dest)
-		case file.FileUpdated:
-			slog.Info("updated", "file", dest)
-		}
-		contents[ref.Path] = content
 	}
 
 	return &file.DepLock{

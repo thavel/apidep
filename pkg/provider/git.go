@@ -5,12 +5,14 @@ import (
 	"io"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 
 	giturls "github.com/chainguard-dev/git-urls"
 	gogit "github.com/go-git/go-git/v6"
 	"github.com/go-git/go-git/v6/plumbing"
 	"github.com/go-git/go-git/v6/plumbing/client"
+	"github.com/go-git/go-git/v6/plumbing/object"
 	"github.com/go-git/go-git/v6/plumbing/transport/http"
 	"github.com/go-git/go-git/v6/plumbing/transport/ssh"
 	"github.com/go-git/go-git/v6/storage/memory"
@@ -212,4 +214,35 @@ func sshKeyFileAuth(user string) (*ssh.PublicKeys, error) {
 		}
 	}
 	return nil, fmt.Errorf("no readable private key found in %s", sshDir)
+}
+
+func (s *gitSource) Glob(pattern string) ([]string, error) {
+	commit, err := s.repo.CommitObject(s.hash)
+	if err != nil {
+		return nil, fmt.Errorf("commit object: %w", err)
+	}
+
+	tree, err := commit.Tree()
+	if err != nil {
+		return nil, fmt.Errorf("tree: %w", err)
+	}
+
+	output := []string{}
+
+	if err := tree.Files().ForEach(func(f *object.File) error {
+		match, err := filepath.Match(pattern, f.Name)
+		if err != nil {
+			return err
+		}
+
+		if match {
+			output = append(output, f.Name)
+		}
+
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	return output, nil
 }

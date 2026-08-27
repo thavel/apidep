@@ -48,17 +48,24 @@ func validateRefs(baseDir string, refs []file.Ref) error {
 	var firstErr error
 
 	for _, ref := range refs {
-		path := filepath.Join(baseDir, ref.Path)
-
-		if err := file.Validate(path, ref.Type); err != nil {
-			slog.Error("invalid file", "path", ref.Path, "type", ref.Type, "err", err)
-			if firstErr == nil {
-				firstErr = err
-			}
-			continue
+		filenames, err := ref.Inputs(nil)
+		if err != nil {
+			return err
 		}
 
-		slog.Info("valid", "file", ref.Path, "type", ref.Type)
+		for _, filename := range filenames {
+			path := filepath.Join(baseDir, filename)
+
+			if err := file.Validate(path, ref.Type); err != nil {
+				slog.Error("invalid file", "path", filename, "type", ref.Type, "err", err)
+				if firstErr == nil {
+					firstErr = err
+				}
+				continue
+			}
+
+			slog.Info("valid", "file", filename, "type", ref.Type)
+		}
 	}
 
 	if firstErr == nil {
