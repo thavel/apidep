@@ -10,6 +10,7 @@ import (
 	"github.com/thavel/apidep/pkg/file"
 )
 
+// Init is the `init` command: scan a directory and generate an api.ref.yml.
 var Init = &cli.Command{
 	Name:  "init",
 	Usage: "Generate an api.ref.yml by scanning api files",

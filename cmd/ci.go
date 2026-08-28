@@ -12,6 +12,7 @@ import (
 	"github.com/thavel/apidep/pkg/file"
 )
 
+// CI is the `ci` command: check that dependencies are up-to-date and valid.
 var CI = &cli.Command{
 	Name:  "ci",
 	Usage: "Check that api deps described in api.dep.yml are up-to-date and valid",
@@ -66,7 +67,7 @@ func ciAction(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	for _, rd := range deps {
-		if err := checkDep(rd, rootOutput, lf, noValidate); err != nil {
+		if err := checkDep(ctx, rd, rootOutput, lf, noValidate); err != nil {
 			return err
 		}
 	}
@@ -75,7 +76,10 @@ func ciAction(ctx context.Context, cmd *cli.Command) error {
 	return nil
 }
 
-func checkDep(rd ResolvedDep, rootOutput string, lock *file.ApiLock, noValidate bool) error {
+func checkDep(
+	ctx context.Context, rd ResolvedDep, rootOutput string,
+	lock *file.ApiLock, noValidate bool,
+) error {
 	dep := &rd.Dep
 	source := rd.Source
 
@@ -104,7 +108,7 @@ func checkDep(rd ResolvedDep, rootOutput string, lock *file.ApiLock, noValidate 
 			}
 
 			if !noValidate {
-				if err := file.Validate(dest, ref.Type); err != nil {
+				if err := file.Validate(ctx, dest, ref.Type); err != nil {
 					return fmt.Errorf("%s: invalid: %w", dest, err)
 				}
 			}

@@ -12,6 +12,7 @@ import (
 	"github.com/thavel/apidep/pkg/file"
 )
 
+// Validate is the `validate` command: check the api files in an api.ref.yml.
 var Validate = &cli.Command{
 	Name:  "validate",
 	Usage: "Validate api refs files described in api.ref.yml",
@@ -41,10 +42,10 @@ func validateAction(ctx context.Context, cmd *cli.Command) error {
 		slog.Info("no refs found", "file", refPath)
 		return nil
 	}
-	return validateRefs(".", apiRef.Refs)
+	return validateRefs(ctx, ".", apiRef.Refs)
 }
 
-func validateRefs(baseDir string, refs []file.Ref) error {
+func validateRefs(ctx context.Context, baseDir string, refs []file.Ref) error {
 	var firstErr error
 
 	for _, ref := range refs {
@@ -56,7 +57,7 @@ func validateRefs(baseDir string, refs []file.Ref) error {
 		for _, filename := range filenames {
 			path := filepath.Join(baseDir, filename)
 
-			if err := file.Validate(path, ref.Type); err != nil {
+			if err := file.Validate(ctx, path, ref.Type); err != nil {
 				slog.Error("invalid file", "path", filename, "type", ref.Type, "err", err)
 				if firstErr == nil {
 					firstErr = err

@@ -18,26 +18,29 @@ import (
 
 const separator = string(os.PathSeparator)
 
+// Type is an api definition kind (grpc, openapi).
 type Type = string
 
 const (
-	TypeUnknown Type = "unknown"
-	TypeGrpc    Type = "grpc"
-	TypeOpenapi Type = "openapi"
+	TypeUnknown Type = "unknown" // type could not be detected
+	TypeGrpc    Type = "grpc"    // protobuf / gRPC
+	TypeOpenapi Type = "openapi" // OpenAPI / Swagger
 )
 
-// File: api.ref.yml
+// ApiRef mirrors the api.ref.yml manifest published by a provider.
 type ApiRef struct {
 	Version int   `yaml:"version"`
 	Refs    []Ref `yaml:"refs"`
 }
 
+// Ref is a single api definition entry in a ref manifest.
 type Ref struct {
 	Path   string `yaml:"path"`
 	Type   Type   `yaml:"type,omitempty"`   // optional
 	Output string `yaml:"output,omitempty"` // optional
 }
 
+// ReadRef loads and parses an api.ref.yml file.
 func ReadRef(filePath string) (*ApiRef, error) {
 	data, err := os.ReadFile(filePath)
 	if err != nil {
@@ -46,6 +49,8 @@ func ReadRef(filePath string) (*ApiRef, error) {
 	return ParseRef(filePath, data)
 }
 
+// Inputs expands the ref path against src, or returns it verbatim when src is
+// nil (globs are only resolved against a source).
 func (r Ref) Inputs(src Source) ([]string, error) {
 	if src == nil {
 		return []string{r.Path}, nil
@@ -53,6 +58,7 @@ func (r Ref) Inputs(src Source) ([]string, error) {
 	return src.Glob(r.Path)
 }
 
+// ParseRef parses ref manifest content and rejects glob patterns in paths.
 func ParseRef(filePath string, content []byte) (*ApiRef, error) {
 	var refs ApiRef
 	if err := yaml.Unmarshal([]byte(content), &refs); err != nil {
@@ -60,12 +66,16 @@ func ParseRef(filePath string, content []byte) (*ApiRef, error) {
 	}
 	for _, ref := range refs.Refs {
 		if strings.ContainsAny(ref.Path, "*?[") {
-			return nil, fmt.Errorf("parse ref %s: glob patterns are not allowed in ref files, list files explicitly: %q", filePath, ref.Path)
+			return nil, fmt.Errorf(
+				"parse ref %s: glob patterns are not allowed, list files explicitly: %q",
+				filePath, ref.Path,
+			)
 		}
 	}
 	return &refs, nil
 }
 
+// WriteRef serializes ref to filePath, defaulting the version when unset.
 func WriteRef(filePath string, ref *ApiRef) error {
 	if ref.Version == 0 {
 		ref.Version = version
@@ -80,6 +90,8 @@ func WriteRef(filePath string, ref *ApiRef) error {
 	return nil
 }
 
+// Detect infers the api type from a file's extension and contents. The bool
+// is false when the type can't be determined.
 func Detect(filePath string) (Type, bool) {
 	lower := strings.ToLower(filePath)
 
@@ -108,6 +120,8 @@ func Detect(filePath string) (Type, bool) {
 	return TypeUnknown, false
 }
 
+// Scan walks root and returns a Ref for each detected api file. maxDepth of 0
+// means unlimited. Detection reads file contents relative to the CWD.
 func Scan(root string, maxDepth int) ([]Ref, error) {
 	var refs []Ref
 	rootDepth := strings.Count(filepath.Clean(root), separator)
@@ -139,7 +153,8 @@ func Scan(root string, maxDepth int) ([]Ref, error) {
 	return refs, err
 }
 
-func Validate(filePath string, apiType string) error {
+// Validate parses filePath as apiType, detecting the type when apiType is empty.
+func Validate(ctx context.Context, filePath, apiType string) error {
 	t := apiType
 	if len(t) == 0 {
 		var ok bool
@@ -153,7 +168,7 @@ func Validate(filePath string, apiType string) error {
 	if err != nil {
 		return fmt.Errorf("unable to read file %s: %w", filePath, err)
 	}
-	switch apiType {
+	switch t {
 	case TypeGrpc:
 		handler := reporter.NewHandler(nil)
 		_, err := parser.Parse(filePath, bytes.NewReader(content), handler)
@@ -171,12 +186,12 @@ func Validate(filePath string, apiType string) error {
 		if err != nil {
 			return fmt.Errorf("openapi parse error in %s: %w", filePath, err)
 		}
-		if err := handler.Validate(context.Background()); err != nil {
+		if err := handler.Validate(ctx); err != nil {
 			return fmt.Errorf("openapi validation error in %s: %w", filePath, err)
 		}
 		return nil
 	default:
-		return fmt.Errorf("unknown api type %q", apiType)
+		return fmt.Errorf("unknown api type %q", t)
 	}
 }
 

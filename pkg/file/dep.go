@@ -18,21 +18,23 @@ const (
 	dirPerm  = 0o755
 )
 
+// FileStatus reports what WriteDep did to an output file.
 type FileStatus uint8
 
 const (
-	FileNew FileStatus = iota
-	FileUnchanged
-	FileUpdated
+	FileNew       FileStatus = iota // output did not exist
+	FileUnchanged                   // output already matched
+	FileUpdated                     // output existed and was overwritten
 )
 
-// File: api.dep.yml
+// ApiDep mirrors the api.dep.yml file.
 type ApiDep struct {
 	Version int    `yaml:"version"`
 	Deps    []Dep  `yaml:"deps"`
 	Output  string `yaml:"output"` // optional
 }
 
+// Dep is a single dependency declared in api.dep.yml.
 type Dep struct {
 	Source  string `yaml:"source"`
 	Version string `yaml:"version"` // optional
@@ -41,17 +43,20 @@ type Dep struct {
 	Output  string `yaml:"output"`  // optional
 }
 
+// Provider matches a dependency source and opens it for reading.
 type Provider interface {
 	Match(uri string) bool
 	Parse(uri, version string) (Source, error)
 }
 
+// Source reads files from a resolved dependency at a fixed revision.
 type Source interface {
 	Fetch(filePath string) ([]byte, error)
 	Commit() string
 	Glob(pattern string) ([]string, error)
 }
 
+// ReadDep loads and parses an api.dep.yml file.
 func ReadDep(filePath string) (*ApiDep, error) {
 	data, err := os.ReadFile(filePath)
 	if err != nil {
@@ -64,6 +69,8 @@ func ReadDep(filePath string) (*ApiDep, error) {
 	return &deps, nil
 }
 
+// WriteDep writes content to dest, reporting whether it was new, unchanged
+// or updated.
 func WriteDep(mu *sync.Mutex, dest string, content []byte) (FileStatus, error) {
 	dir := path.Dir(dest)
 	if err := os.MkdirAll(dir, dirPerm); err != nil {
@@ -86,6 +93,8 @@ func WriteDep(mu *sync.Mutex, dest string, content []byte) (FileStatus, error) {
 	return status, os.WriteFile(dest, content, filePerm)
 }
 
+// Output resolves the local destination for filePath, using the first of
+// ref, dep, root or def that is set.
 func Output(filePath, root, dep, ref, def string) string {
 	fileName := filepath.Base(filePath)
 	switch {
@@ -96,7 +105,7 @@ func Output(filePath, root, dep, ref, def string) string {
 		if strings.HasSuffix(ref, `/.`) || strings.HasSuffix(ref, `\.`) {
 			return path.Join(path.Dir(ref), filePath)
 		}
-		// Not necessary, it's just to make sure the path is properly formatted
+		// ref is an explicit output file
 		return path.Join(path.Dir(ref), filepath.Base(ref))
 	case len(dep) > 0:
 		if strings.HasSuffix(dep, `/.`) || strings.HasSuffix(dep, `\.`) {

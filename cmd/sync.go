@@ -20,6 +20,7 @@ const (
 	defaultVersion  = "HEAD"
 )
 
+// ResolvedDep pairs a dependency with the opened source it resolves to.
 type ResolvedDep struct {
 	Dep    file.Dep
 	Source file.Source
@@ -31,6 +32,7 @@ var (
 		&provider.FS{},
 		&provider.Git{},
 	}
+	// Sync is the `sync` command: fetch dependencies and update the lock.
 	Sync = &cli.Command{
 		Name:  "sync",
 		Usage: "Synchronize api dependencies",
@@ -96,7 +98,7 @@ func syncAction(ctx context.Context, cmd *cli.Command) error {
 
 			slog.Info("fetching", "source", rd.Dep.Source)
 
-			depLock, err := syncDep(rd, rootOutput, noValidate)
+			depLock, err := syncDep(ctx, rd, rootOutput, noValidate)
 			if err != nil {
 				slog.Error("syncing", "source", rd.Dep.Source, "err", err)
 				return
@@ -125,7 +127,9 @@ func syncAction(ctx context.Context, cmd *cli.Command) error {
 	return nil
 }
 
-func syncDep(rd ResolvedDep, root string, noValidate bool) (*file.DepLock, error) {
+func syncDep(
+	ctx context.Context, rd ResolvedDep, root string, noValidate bool,
+) (*file.DepLock, error) {
 	dep := &rd.Dep
 	source := rd.Source
 
@@ -147,7 +151,7 @@ func syncDep(rd ResolvedDep, root string, noValidate bool) (*file.DepLock, error
 				return nil, fmt.Errorf("error writing output: %w", err)
 			}
 			if status != file.FileUnchanged && !noValidate {
-				if err := file.Validate(dest, ref.Type); err != nil {
+				if err := file.Validate(ctx, dest, ref.Type); err != nil {
 					slog.Warn("validating", "path", dest, "err", err)
 				}
 			}

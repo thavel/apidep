@@ -20,13 +20,16 @@ import (
 	"github.com/thavel/apidep/pkg/file"
 )
 
+// Git is a file.Provider for git repositories (ssh, https, git URLs).
 type Git struct{}
 
+// Match reports whether uri parses as a git URL.
 func (*Git) Match(uri string) bool {
 	_, err := giturls.Parse(uri)
 	return err == nil
 }
 
+// Parse clones uri at version and returns a source over that commit.
 func (*Git) Parse(uri, version string) (file.Source, error) {
 	repo, err := openRepo(uri, version)
 	if err != nil {
@@ -144,7 +147,9 @@ func resolveVersion(repo *gogit.Repository, version string) (plumbing.Hash, erro
 	if !h.IsZero() {
 		return h, nil
 	}
-	return plumbing.ZeroHash, fmt.Errorf("cannot resolve %q as branch, tag or commit", version)
+	return plumbing.ZeroHash, fmt.Errorf(
+		"cannot resolve %q as branch, tag or commit", version,
+	)
 }
 
 func buildAuth(source string) ([]client.Option, error) {
@@ -166,7 +171,8 @@ func buildAuth(source string) ([]client.Option, error) {
 	}
 	if u.User != nil {
 		pass, _ := u.User.Password()
-		return []client.Option{client.WithHTTPAuth(&http.BasicAuth{Username: u.User.Username(), Password: pass})}, nil
+		auth := &http.BasicAuth{Username: u.User.Username(), Password: pass}
+		return []client.Option{client.WithHTTPAuth(auth)}, nil
 	}
 	return nil, nil
 }
@@ -175,7 +181,9 @@ func isSSHURI(source string) bool {
 	if strings.HasPrefix(source, "ssh://") {
 		return true
 	}
-	if !strings.Contains(source, "://") && strings.Contains(source, "@") && strings.Contains(source, ":") {
+	if !strings.Contains(source, "://") &&
+		strings.Contains(source, "@") &&
+		strings.Contains(source, ":") {
 		return true
 	}
 	return false
