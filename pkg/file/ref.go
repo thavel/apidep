@@ -58,6 +58,11 @@ func ParseRef(filePath string, content []byte) (*ApiRef, error) {
 	if err := yaml.Unmarshal([]byte(content), &refs); err != nil {
 		return nil, fmt.Errorf("parse ref %s: %w", filePath, err)
 	}
+	for _, ref := range refs.Refs {
+		if strings.ContainsAny(ref.Path, "*?[") {
+			return nil, fmt.Errorf("parse ref %s: glob patterns are not allowed in ref files, list files explicitly: %q", filePath, ref.Path)
+		}
+	}
 	return &refs, nil
 }
 
