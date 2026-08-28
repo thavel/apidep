@@ -21,14 +21,19 @@ type ApiLock struct {
 }
 
 // Upsert replaces the entry for entry.Source, or appends it if absent.
-func (l *ApiLock) Upsert(entry DepLock) {
+// It returns true if the lock was modified.
+func (l *ApiLock) Upsert(entry DepLock) bool {
 	for i, d := range l.Deps {
 		if d.Source == entry.Source {
+			if d == entry {
+				return false
+			}
 			l.Deps[i] = entry
-			return
+			return true
 		}
 	}
 	l.Deps = append(l.Deps, entry)
+	return true
 }
 
 // Get returns the lock entry for source, if present.

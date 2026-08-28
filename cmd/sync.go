@@ -115,13 +115,20 @@ func syncAction(ctx context.Context, cmd *cli.Command) error {
 		if err != nil {
 			return fmt.Errorf("load lock file: %w", err)
 		}
+		changed := false
 		for _, entry := range lockDeps {
-			lock.Upsert(entry)
+			if lock.Upsert(entry) {
+				changed = true
+			}
 		}
-		if err := file.WriteLock(lockPath, lock); err != nil {
-			return fmt.Errorf("save lock file: %w", err)
+		if changed {
+			if err := file.WriteLock(lockPath, lock); err != nil {
+				return fmt.Errorf("save lock file: %w", err)
+			}
+			slog.Info("lock file updated", "path", lockPath)
+		} else {
+			slog.Info("lock file unchanged", "path", lockPath)
 		}
-		slog.Info("lock file updated", "path", lockPath)
 	}
 
 	return nil

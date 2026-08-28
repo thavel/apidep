@@ -40,20 +40,24 @@ func TestApiLock_UpsertAndGet(t *testing.T) {
 	_, ok := l.Get("src")
 	assert.False(t, ok)
 
-	l.Upsert(DepLock{Source: "src", Hash: "h1"})
+	assert.True(t, l.Upsert(DepLock{Source: "src", Hash: "h1"}))
 	require.Len(t, l.Deps, 1)
 
 	entry, ok := l.Get("src")
 	require.True(t, ok)
 	assert.Equal(t, "h1", entry.Hash)
 
-	// Upsert with same source replaces, does not append.
-	l.Upsert(DepLock{Source: "src", Hash: "h2"})
+	// Upsert with same source and same content: no change.
+	assert.False(t, l.Upsert(DepLock{Source: "src", Hash: "h1"}))
+	require.Len(t, l.Deps, 1)
+
+	// Upsert with same source but different hash replaces, does not append.
+	assert.True(t, l.Upsert(DepLock{Source: "src", Hash: "h2"}))
 	require.Len(t, l.Deps, 1)
 	entry, _ = l.Get("src")
 	assert.Equal(t, "h2", entry.Hash)
 
-	l.Upsert(DepLock{Source: "other", Hash: "h3"})
+	assert.True(t, l.Upsert(DepLock{Source: "other", Hash: "h3"}))
 	require.Len(t, l.Deps, 2)
 }
 
